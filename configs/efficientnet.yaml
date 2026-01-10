@@ -1,0 +1,12 @@
+# EfficientNet-B0 backbone configuration
+num_epochs: 50
+batch_size: 32
+learning_rate: 1.0e-4
+weight_decay: 1.0e-5
+img_size: 224
+dataset_root: dataset
+num_workers: 4
+seed: 42
+normalize_coords: true
+backbone_name: efficientnet_b0
+use_haversine_loss: true
