@@ -2,6 +2,8 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import math
+import yaml
+import argparse
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
@@ -112,6 +114,7 @@ def train(config):
     else:
         criterion = nn.MSELoss()
         print("Using MSE loss")
+
     optimizer = AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=config['weight_decay'])
     scheduler = CosineAnnealingLR(optimizer, T_max=config['num_epochs'])
     
@@ -139,18 +142,13 @@ def train(config):
 
 
 if __name__ == "__main__":
-    config = {
-        'num_epochs': 50,
-        'batch_size': 32,
-        'learning_rate': 1e-4,
-        'weight_decay': 1e-5,
-        'img_size': 224,
-        'dataset_root': 'dataset',
-        'num_workers': 4,
-        'seed': 42,
-        'normalize_coords': True,
-        'backbone_name': 'mobilenetv3_large_100',
-        'use_haversine_loss': False,  # Set to True to train with distance loss (km)
-    }
+    parser = argparse.ArgumentParser(description="Train GeoBot model")
+    parser.add_argument("--config", type=str, default="configs/default.yaml", help="Path to config file")
+    args = parser.parse_args()
     
+    # Load config from YAML
+    with open(args.config, "r") as f:
+        config = yaml.safe_load(f)
+    
+    print(f"Loaded config from: {args.config}")
     train(config)
