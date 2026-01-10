@@ -1,11 +1,46 @@
 from tqdm import tqdm
 import torch
 import torch.nn as nn
+import math
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.dataset import get_dataloaders
 from src.model import ImageToGeoModel
+
+
+class HaversineLoss(nn.Module):
+    """
+    Loss function that computes the mean haversine distance in km.
+    Expects normalized coordinates in [-1, 1] range.
+    """
+    def __init__(self, earth_radius=6371.0):
+        super().__init__()
+        self.earth_radius = earth_radius
+    
+    def forward(self, pred, target):
+        # Denormalize: [-1, 1] -> degrees
+        pred_lat = pred[:, 0] * 90
+        pred_lon = pred[:, 1] * 180
+        target_lat = target[:, 0] * 90
+        target_lon = target[:, 1] * 180
+        
+        # Convert to radians
+        pred_lat = pred_lat * math.pi / 180
+        pred_lon = pred_lon * math.pi / 180
+        target_lat = target_lat * math.pi / 180
+        target_lon = target_lon * math.pi / 180
+        
+        # Haversine formula
+        dlat = target_lat - pred_lat
+        dlon = target_lon - pred_lon
+        
+        a = torch.sin(dlat / 2)**2 + torch.cos(pred_lat) * torch.cos(target_lat) * torch.sin(dlon / 2)**2
+        c = 2 * torch.asin(torch.sqrt(a.clamp(min=1e-8, max=1.0)))  # clamp for numerical stability
+        
+        distance_km = self.earth_radius * c
+        
+        return distance_km.mean()
 
 
 def train_one_epoch(model, dataloader, optimizer, criterion, device):
@@ -71,7 +106,12 @@ def train(config):
     model.to(device)
     
     # Loss, optimizer, scheduler
-    criterion = nn.MSELoss()
+    if config.get('use_haversine_loss', False):
+        criterion = HaversineLoss()
+        print("Using Haversine loss (distance in km)")
+    else:
+        criterion = nn.MSELoss()
+        print("Using MSE loss")
     optimizer = AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=config['weight_decay'])
     scheduler = CosineAnnealingLR(optimizer, T_max=config['num_epochs'])
     
@@ -109,7 +149,8 @@ if __name__ == "__main__":
         'num_workers': 4,
         'seed': 42,
         'normalize_coords': True,
-        'backbone_name': 'mobilenetv3_large_100'
+        'backbone_name': 'mobilenetv3_large_100',
+        'use_haversine_loss': False,  # Set to True to train with distance loss (km)
     }
     
     train(config)
