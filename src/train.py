@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
@@ -12,7 +13,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
     model.train()
     total_loss = 0.0
     
-    for images, coords in dataloader:
+    for images, coords in tqdm(dataloader):
         images = images.to(device)
         coords = coords.to(device)
         
@@ -62,9 +63,11 @@ def train(config):
         seed=config['seed'],
         normalize_coords=config['normalize_coords']
     )
+
+    print(f"Finetuning Pretrained Model: {config['backbone_name']}")
     
     # Initialize model
-    model = ImageToGeoModel()
+    model = ImageToGeoModel(config['backbone_name'])
     model.to(device)
     
     # Loss, optimizer, scheduler
@@ -74,7 +77,7 @@ def train(config):
     
     best_val_loss = float('inf')
     
-    for epoch in range(config['num_epochs']):
+    for epoch in tqdm(range(config['num_epochs'])):
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         val_loss = validate(model, val_loader, criterion, device)
         scheduler.step()
@@ -90,6 +93,7 @@ def train(config):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
                 'best_val_loss': best_val_loss,
+                'backbone_name': config['backbone_name'],
             }, "checkpoint.pt")
             print(f"  ✓ Saved new best checkpoint (val_loss: {val_loss:.4f})")
 
@@ -105,6 +109,7 @@ if __name__ == "__main__":
         'num_workers': 4,
         'seed': 42,
         'normalize_coords': True,
+        'backbone_name': 'mobilenetv3_large_100'
     }
     
     train(config)

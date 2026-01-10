@@ -8,6 +8,8 @@ __pycache__/
 
 dataset/
 
+checkpoint.pt
+
 # Distribution / packaging
 .Python
 build/
