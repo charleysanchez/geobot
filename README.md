@@ -119,8 +119,8 @@ Features:
 Input Image (3 x 224 x 224)
          ↓
 ┌─────────────────────┐
-│  Pretrained Backbone │  (MobileNetV3, EfficientNet, etc.)
-│    (timm library)    │
+│ Pretrained Backbone │  (MobileNetV3, EfficientNet, etc.)
+│   (timm library)    │
 └─────────────────────┘
          ↓
      Dropout (0.2)
