@@ -10,6 +10,9 @@ dataset/
 
 checkpoint.pt
 
+wandb/
+prediction_images/
+
 # Distribution / packaging
 .Python
 build/

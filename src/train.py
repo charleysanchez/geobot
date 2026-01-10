@@ -121,6 +121,15 @@ def train(config, use_wandb=False):
     print(f"Batch size:      {config['batch_size']}")
     print(f"Learning rate:   {config['learning_rate']}")
     print(f"Epochs:          {config['num_epochs']}")
+    
+    # Freeze/unfreeze settings
+    freeze_backbone = config.get('freeze_backbone', False)
+    unfreeze_at_epoch = config.get('unfreeze_at_epoch', 0)
+    unfreeze_lr = config.get('unfreeze_lr', config['learning_rate'] / 10)
+    
+    if freeze_backbone:
+        print(f"Freeze backbone: Yes (unfreeze at epoch {unfreeze_at_epoch})")
+        print(f"Unfreeze LR:     {unfreeze_lr}")
     print("=" * 50 + "\n")
     
     # Create dataloaders
@@ -138,6 +147,12 @@ def train(config, use_wandb=False):
     model = ImageToGeoModel(config['backbone_name'])
     model.to(device)
     
+    # Freeze backbone if configured
+    if freeze_backbone:
+        model.freeze_backbone()
+    
+    print(f"Trainable params: {model.get_trainable_params():,}")
+    
     # Loss, optimizer, scheduler
     if config.get('use_haversine_loss', False):
         criterion = HaversineLoss()
@@ -152,6 +167,15 @@ def train(config, use_wandb=False):
     print("\nStarting training...\n")
     
     for epoch in range(config['num_epochs']):
+        # Check if we should unfreeze backbone
+        if freeze_backbone and epoch == unfreeze_at_epoch:
+            model.unfreeze_backbone()
+            print(f"Trainable params: {model.get_trainable_params():,}")
+            # Reset optimizer with lower learning rate for fine-tuning
+            optimizer = AdamW(model.parameters(), lr=unfreeze_lr, weight_decay=config['weight_decay'])
+            scheduler = CosineAnnealingLR(optimizer, T_max=config['num_epochs'] - epoch)
+            print(f"Optimizer reset with LR: {unfreeze_lr}")
+        
         # Train and validate
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, epoch, config['num_epochs'])
         val_loss = validate(model, val_loader, criterion, device, epoch, config['num_epochs'])

@@ -1,5 +1,6 @@
 import torch
 import math
+import argparse
 
 from src.model import ImageToGeoModel
 from src.dataset import get_dataloaders
@@ -86,6 +87,12 @@ def evaluate(model, dataloader, device):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Evaluate GeoBot model")
+    parser.add_argument("--checkpoint", type=str, default="checkpoint.pt", help="Path to checkpoint")
+    parser.add_argument("--dataset", type=str, default="dataset", help="Path to dataset root")
+    parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
+    args = parser.parse_args()
+    
     # Device setup
     device = torch.device(
         "cuda" if torch.cuda.is_available() 
@@ -95,7 +102,8 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
     
     # Load checkpoint
-    checkpoint = torch.load("checkpoint.pt", map_location=device)
+    print(f"Loading checkpoint: {args.checkpoint}")
+    checkpoint = torch.load(args.checkpoint, map_location=device)
     
     # Initialize model (use same backbone as training)
     backbone_name = checkpoint.get('backbone_name', 'mobilenetv3_large_100')
@@ -104,23 +112,33 @@ if __name__ == "__main__":
     model.to(device)
     model.eval()
     
+    print(f"Model: {backbone_name}")
+    
     # Create test dataloader
     _, _, test_loader = get_dataloaders(
-        root='dataset',
-        batch_size=32,
+        root=args.dataset,
+        batch_size=args.batch_size,
         img_size=224,
         num_workers=4,
         seed=42,
         normalize_coords=True
     )
     
+    print(f"Test samples: {len(test_loader.dataset)}")
+    
     # Run evaluation
     print("\nEvaluating on test set...")
     metrics = evaluate(model, test_loader, device)
     
     # Print results
-    print("\n" + "=" * 40)
+    print("\n" + "=" * 50)
     print("EVALUATION RESULTS")
-    print("=" * 40)
-    for metric, value in metrics.items():
-        print(f"{metric}: {value:.2f}")
+    print("=" * 50)
+    print(f"Mean distance:    {metrics['mean_distance_km']:,.2f} km")
+    print(f"Median distance:  {metrics['median_distance_km']:,.2f} km")
+    print("-" * 50)
+    print(f"Accuracy @ 1km:   {metrics['accuracy_1km']:.2f}%")
+    print(f"Accuracy @ 25km:  {metrics['accuracy_25km']:.2f}%")
+    print(f"Accuracy @ 200km: {metrics['accuracy_200km']:.2f}%")
+    print(f"Accuracy @ 750km: {metrics['accuracy_750km']:.2f}%")
+    print("=" * 50)

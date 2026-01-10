@@ -2,6 +2,7 @@ import timm
 import torch
 import torch.nn as nn
 
+
 class ImageToGeoModel(nn.Module):
     def __init__(self, backbone_name="densenet121", img_size=224):
         super().__init__()
@@ -21,3 +22,19 @@ class ImageToGeoModel(nn.Module):
         x = self.backbone(x)
         x = self.head(x)
         return x
+    
+    def freeze_backbone(self):
+        """Freeze backbone parameters (train only head)."""
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+        print("Backbone frozen - training head only")
+    
+    def unfreeze_backbone(self):
+        """Unfreeze backbone parameters (train entire model)."""
+        for param in self.backbone.parameters():
+            param.requires_grad = True
+        print("Backbone unfrozen - training full model")
+    
+    def get_trainable_params(self):
+        """Return number of trainable parameters."""
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
