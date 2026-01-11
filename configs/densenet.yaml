@@ -1,0 +1,20 @@
+# Two-phase training: freeze backbone first, then unfreeze
+# Phase 1 (epochs 0-9): Train head only (fast)
+# Phase 2 (epochs 10-49): Fine-tune full model (slower, lower LR)
+
+num_epochs: 50
+batch_size: 32
+learning_rate: 1.0e-3
+weight_decay: 1.0e-5
+img_size: 224
+dataset_root: dataset
+num_workers: 4
+seed: 42
+normalize_coords: true
+backbone_name: densenet121
+use_haversine_loss: true
+
+# Backbone unfreezing settings
+freeze_backbone: true
+unfreeze_at_epoch: 10
+unfreeze_lr: 1.0e-5  # Much lower LR for fine-tuning pretrained weights
